@@ -1,4 +1,4 @@
-module go.nandlabs.io/commons-aws-ext
+module go.nandlabs.io/commons-aws
 
 go 1.18
 require (
