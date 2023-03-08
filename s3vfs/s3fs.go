@@ -3,13 +3,13 @@ package s3vfs
 import (
 	"bytes"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	go_commons_aws "go.nandlabs.io/commons-aws"
 	"io/ioutil"
 	"net/url"
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	go_commons_aws "go.nandlabs.io/commons-aws"
 	"go.nandlabs.io/commons/vfs"
 )
 
