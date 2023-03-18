@@ -1,24 +1,17 @@
 package s3vfs
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/url"
-	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
-	go_commons_aws "go.nandlabs.io/commons-aws"
 	"go.nandlabs.io/commons/vfs"
 )
 
 const (
 	fileScheme = "s3"
-)
-
-var (
-	svc = s3.New(go_commons_aws.AwsSession)
 )
 
 var localFsSchemes = []string{fileScheme}
@@ -27,16 +20,33 @@ type S3Fs struct {
 	*vfs.BaseVFS
 }
 
-func (o S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
-	fileBytes, readErr := os.ReadFile(u.Path)
-	if readErr != nil {
-		fmt.Println("Error reading file:", readErr)
-		return nil, readErr
+// creating a file in the s3 bucket, can create both object and bucket
+func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
+	// TODO: repetitive code, can be moved to a generic function
+	err = validateUrl(u)
+	if err != nil {
+		return nil, err
 	}
+
+	awsSession, err := GetSession(u.Host, u.Path)
+	if err != nil {
+		return nil, err
+	}
+	svc := s3.New(awsSession)
+
+	pathParams := strings.Split(u.Path, "/")
+	bucket := pathParams[0]
+	key := parseKeyFromPath(pathParams)
+	// check if the same path already exist on the s3 or not
+	found, existError := keyExists(bucket, key, svc)
+	if !found {
+		return nil, existError
+	}
+
+	// create the folder structure or an empty file
 	_, err = svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String("BUCKET"),
-		Key:    aws.String(u.Path),
-		Body:   bytes.NewReader(fileBytes),
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
 	})
 	if err != nil {
 		fmt.Println("Error uploading file:", err)
@@ -45,32 +55,32 @@ func (o S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 	return
 }
 
-func (o S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
+// s3://abc/11/test/file.txt
+// abc -> abc
+// 11/test -> folder hierarchy
+func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
+
+	pathParams := strings.Split(u.Path, "/")
+	bucket := pathParams[0]
+	key := parseKeyFromPath(pathParams)
+
+	awsSession, err := GetSession(u.Host, u.Path)
+	if err != nil {
+		return nil, err
+	}
+	svc := s3.New(awsSession)
+
 	resp, openError := svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String("BUCKET"),
-		Key:    aws.String(u.Path),
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
 	})
 	if openError != nil {
 		fmt.Println("Error downloading file:", openError)
 		return nil, openError
 	}
-	defer resp.Body.Close()
-
-	// the logic can be improved to read the response file
-	fileBytes, readError := ioutil.ReadAll(resp.Body)
-	if readError != nil {
-		fmt.Println("Error reading file contents:", readError)
-		return nil, readError
-	}
-
-	tempFile, _ := ioutil.TempFile("", "example")
-	_, _ = tempFile.Write(fileBytes)
-
-	var f *os.File
-	f, err = os.Open(tempFile.Name())
 	if err == nil {
 		file = &S3File{
-			file:     f,
+			file:     resp,
 			Location: u,
 			fs:       o,
 		}
@@ -78,6 +88,6 @@ func (o S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
 	return
 }
 
-func (o S3Fs) Schemes() []string {
+func (o *S3Fs) Schemes() []string {
 	return localFsSchemes
 }
