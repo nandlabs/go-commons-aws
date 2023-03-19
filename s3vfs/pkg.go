@@ -7,10 +7,12 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"go.nandlabs.io/commons-aws/provider"
+	"go.nandlabs.io/commons/l3"
 	"go.nandlabs.io/commons/vfs"
 )
 
 var (
+	logger                 = l3.Get()
 	defaultSessionProvider = true
 	sessionProviderMap     = make(map[string]provider.SessionProvider)
 )

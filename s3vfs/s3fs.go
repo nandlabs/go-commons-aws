@@ -3,7 +3,6 @@ package s3vfs
 import (
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -22,31 +21,24 @@ type S3Fs struct {
 
 // creating a file in the s3 bucket, can create both object and bucket
 func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
-	// TODO: repetitive code, can be moved to a generic function
-	err = validateUrl(u)
+	urlOpts, err := parseUrl(u)
 	if err != nil {
 		return nil, err
 	}
-
-	awsSession, err := GetSession(u.Host, u.Path)
+	svc, err := urlOpts.CreateS3Service()
 	if err != nil {
 		return nil, err
 	}
-	svc := s3.New(awsSession)
-
-	pathParams := strings.Split(u.Path, "/")
-	bucket := pathParams[0]
-	key := parseKeyFromPath(pathParams)
 	// check if the same path already exist on the s3 or not
-	found, existError := keyExists(bucket, key, svc)
+	found, existError := keyExists(urlOpts.Bucket, urlOpts.Key, svc)
 	if !found {
 		return nil, existError
 	}
 
 	// create the folder structure or an empty file
 	_, err = svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
+		Bucket: aws.String(urlOpts.Bucket),
+		Key:    aws.String(urlOpts.Key),
 	})
 	if err != nil {
 		fmt.Println("Error uploading file:", err)
@@ -59,20 +51,18 @@ func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 // abc -> abc
 // 11/test -> folder hierarchy
 func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
-
-	pathParams := strings.Split(u.Path, "/")
-	bucket := pathParams[0]
-	key := parseKeyFromPath(pathParams)
-
-	awsSession, err := GetSession(u.Host, u.Path)
+	urlOpts, err := parseUrl(u)
 	if err != nil {
 		return nil, err
 	}
-	svc := s3.New(awsSession)
+	svc, err := urlOpts.CreateS3Service()
+	if err != nil {
+		return nil, err
+	}
 
 	resp, openError := svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
+		Bucket: aws.String(urlOpts.Bucket),
+		Key:    aws.String(urlOpts.Key),
 	})
 	if openError != nil {
 		fmt.Println("Error downloading file:", openError)
