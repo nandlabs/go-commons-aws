@@ -1,6 +1,7 @@
 package s3vfs
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net/url"
@@ -19,7 +20,31 @@ type S3File struct {
 }
 
 // Read - s3Object read the body
+// TODO : is this needed here?
 func (s3File *S3File) Read(b []byte) (int, error) {}
+
+func (s3File *S3File) Write(b []byte) (int, error) {
+	urlOpts, err := parseUrl(s3File.Location)
+	if err != nil {
+		return 0, err
+	}
+	svc, err := urlOpts.CreateS3Service()
+	if err != nil {
+		return 0, err
+	}
+
+	// if key exists in s3 then the key will be overwritten else the new key with input body is created
+	_, err = svc.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(urlOpts.Bucket),
+		Key:    aws.String(urlOpts.Key),
+		Body:   bytes.NewReader(b),
+	})
+	if err != nil {
+		fmt.Println("Error writing file:", err)
+		return 0, err
+	}
+	return len(b), nil
+}
 
 func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
 	urlOpts, err := parseUrl(s3File.Location)
@@ -87,7 +112,7 @@ func (s3File *S3File) Find(filter vfs.FileFilter) ([]vfs.VFile, error) {
 }
 
 func (s3File *S3File) Info() (vfs.VFileInfo, error) {
-	// we need to return the all the metadata attached to the s3 object, how to add them ad VFileInfo?
+	// we need to return the all the metadata attached to the s3 object, how to add them as VFileInfo?
 }
 
 func (s3File *S3File) AddProperty(name, value string) error {

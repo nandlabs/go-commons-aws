@@ -17,12 +17,10 @@ type UrlOpts struct {
 }
 
 func parseUrl(url *url.URL) (*UrlOpts, error) {
-
 	err := validateUrl(url)
 	if err != nil {
 		return nil, err
 	}
-
 	host := url.Host
 	pathParams := strings.Split(url.Path, "/")
 	bucket := pathParams[0]
