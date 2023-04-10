@@ -3,6 +3,7 @@ package s3vfs
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 
@@ -14,14 +15,36 @@ import (
 
 type S3File struct {
 	*vfs.BaseFile
-	file     *s3.GetObjectOutput // this file will be the s3Object instead of the os.File
+	// TODO: remove this and use Location instead
+	//file     *s3.GetObjectOutput // this file will be the s3Object instead of the os.File
 	Location *url.URL
 	fs       vfs.VFileSystem
+	// TODO : add after each operation to closable array
+	closables []io.Closer
 }
 
 // Read - s3Object read the body
-// TODO : is this needed here?
-func (s3File *S3File) Read(b []byte) (int, error) {}
+func (s3File *S3File) Read(b []byte) (body int, err error) {
+	// GetObject from the file URL
+	var urlOpts *UrlOpts
+	var svc *s3.S3
+	var result *s3.GetObjectOutput
+
+	urlOpts, err = parseUrl(s3File.Location)
+	if err != nil {
+		return
+	}
+	svc, err = urlOpts.CreateS3Service()
+	if err != nil {
+		return
+	}
+	result, err = svc.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(urlOpts.Bucket),
+		Key:    aws.String(urlOpts.Key),
+	})
+	defer result.Body.Close()
+	return result.Body.Read(b)
+}
 
 func (s3File *S3File) Write(b []byte) (int, error) {
 	urlOpts, err := parseUrl(s3File.Location)
@@ -65,7 +88,6 @@ func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
 	} else {
 		contents = result.Contents
 	}
-	// TODO : improve the response
 	var response []vfs.VFile
 	for _, item := range contents {
 		u, _ := url.Parse(*item.Key)
@@ -76,43 +98,9 @@ func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
 	return response, nil
 }
 
-func (s3File *S3File) Find(filter vfs.FileFilter) ([]vfs.VFile, error) {
-	// not sure if we need vfs.FileFilter over here
-
-	// check if the given path is present in the bucket
-	urlOpts, err := parseUrl(s3File.Location)
-	if err != nil {
-		return nil, err
-	}
-	svc, err := urlOpts.CreateS3Service()
-	if err != nil {
-		return nil, err
-	}
-
-	found, existError := keyExists(urlOpts.Bucket, urlOpts.Key, svc)
-	if !found {
-		return nil, existError
-	}
-
-	var files []vfs.VFile
-	resp, openError := svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(urlOpts.Bucket),
-		Key:    aws.String(urlOpts.Key),
-	})
-	if openError != nil {
-		fmt.Println("Error downloading file:", openError)
-		return nil, openError
-	}
-	files = append(files, &S3File{
-		file:     resp,
-		Location: s3File.Location,
-		fs:       nil,
-	})
-	return files, nil
-}
-
 func (s3File *S3File) Info() (vfs.VFileInfo, error) {
 	// we need to return the all the metadata attached to the s3 object, how to add them as VFileInfo?
+
 }
 
 func (s3File *S3File) AddProperty(name, value string) error {
@@ -170,14 +158,18 @@ func (s3File *S3File) Url() *url.URL {
 	return s3File.Location
 }
 
-func (s3File *S3File) Delete() error {
-	urlOpts, err := parseUrl(s3File.Location)
+func (s3File *S3File) Delete() (err error) {
+	var urlOpts *UrlOpts
+	var svc *s3.S3
+	var result *s3.DeleteObjectOutput
+
+	urlOpts, err = parseUrl(s3File.Location)
 	if err != nil {
-		return err
+		return
 	}
-	svc, err := urlOpts.CreateS3Service()
+	svc, err = urlOpts.CreateS3Service()
 	if err != nil {
-		return err
+		return
 	}
 
 	input := &s3.DeleteObjectInput{
@@ -185,7 +177,7 @@ func (s3File *S3File) Delete() error {
 		Key:    aws.String(urlOpts.Key),
 	}
 
-	result, err := svc.DeleteObject(input)
+	result, err = svc.DeleteObject(input)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -195,9 +187,18 @@ func (s3File *S3File) Delete() error {
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			return err
+			return
 		}
 	}
 	logger.Info(result)
-	return nil
+	return
+}
+
+func (s3File *S3File) Close() (err error) {
+	if len(s3File.closables) > 0 {
+		for _, closable := range s3File.closables {
+			err = closable.Close()
+		}
+	}
+	return
 }
