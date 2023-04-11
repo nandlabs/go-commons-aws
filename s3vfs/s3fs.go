@@ -1,11 +1,12 @@
 package s3vfs
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"go.nandlabs.io/commons/vfs"
 )
 
@@ -22,7 +23,7 @@ type S3Fs struct {
 // Create : creating a file in the s3 bucket, can create both object and bucket
 func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 	var urlOpts *UrlOpts
-	var svc *s3.S3
+	var svc *s3.Client
 	var found bool
 
 	urlOpts, err = parseUrl(u)
@@ -40,7 +41,7 @@ func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 	}
 
 	// create the folder structure or an empty file
-	_, err = svc.PutObject(&s3.PutObjectInput{
+	_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: aws.String(urlOpts.Bucket),
 		Key:    aws.String(urlOpts.Key),
 	})
@@ -54,7 +55,7 @@ func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 // Open location provided of the S3 bucket
 func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
 	var urlOpts *UrlOpts
-	var svc *s3.S3
+	var svc *s3.Client
 
 	urlOpts, err = parseUrl(u)
 	if err != nil {
@@ -65,7 +66,7 @@ func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
 		return
 	}
 
-	_, err = svc.GetObject(&s3.GetObjectInput{
+	_, err = svc.GetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: aws.String(urlOpts.Bucket),
 		Key:    aws.String(urlOpts.Key),
 	})

@@ -2,12 +2,14 @@ package s3vfs
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"net/url"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type UrlOpts struct {
@@ -37,30 +39,40 @@ func parseUrl(url *url.URL) (*UrlOpts, error) {
 	}, nil
 }
 
-func (urlOpts *UrlOpts) CreateS3Service() (*s3.S3, error) {
+func validateUrl(u *url.URL) error {
+	pathElements := strings.Split(u.Path, "/")
+	if len(pathElements) == 1 {
+		//Only Bucket provided
+		return nil
+	} else if len(pathElements) >= 2 {
+		//Bucket and object path provided
+		return nil
+	} else { //path elements==0
+		//return error as it's not a valid url with bucket missing
+		return errors.New("invalid url with bucket missing")
+	}
+}
+
+func (urlOpts *UrlOpts) CreateS3Service() (*s3.Client, error) {
 	awsSession, err := GetSession(urlOpts.Host, urlOpts.Bucket)
 	if err != nil {
 		return nil, err
 	}
-	svc := s3.New(awsSession)
+	svc := s3.NewFromConfig(*awsSession)
 	return svc, nil
 }
 
-func keyExists(bucket, key string, svc *s3.S3) (bool, error) {
-	_, err := svc.HeadObject(&s3.HeadObjectInput{
+func keyExists(bucket, key string, svc *s3.Client) (bool, error) {
+	_, err := svc.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case "NotFound": // s3.ErrCodeNoSuchKey does not work, aws is missing this error code so we hardwire a string
-				return false, nil
-			default:
-				return false, err
-			}
+		var nsk *types.NoSuchKey
+		if errors.As(err, &nsk) {
+			// handle NoSuchKey error
+			return false, err
 		}
-		return false, err
 	}
 	return true, nil
 }
