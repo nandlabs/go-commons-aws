@@ -41,7 +41,7 @@ func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 	}
 
 	// create the folder structure or an empty file
-	_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
+	_, err = svc.PutObject(context.Background(), &s3.PutObjectInput{
 		Bucket: aws.String(urlOpts.Bucket),
 		Key:    aws.String(urlOpts.Key),
 	})
@@ -66,7 +66,7 @@ func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
 		return
 	}
 
-	_, err = svc.GetObject(context.TODO(), &s3.GetObjectInput{
+	_, err = svc.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(urlOpts.Bucket),
 		Key:    aws.String(urlOpts.Key),
 	})

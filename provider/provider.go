@@ -15,11 +15,11 @@ type SessionProvider interface {
 type DefaultSession struct{}
 
 func (defaultSession *DefaultSession) DefaultSessionProvider() (*aws.Config, error) {
-	sess, err := config.LoadDefaultConfig(context.TODO())
+	sess, err := config.LoadDefaultConfig(context.Background())
 	return &sess, err
 }
 
 func (defaultSession *DefaultSession) Get() (*aws.Config, error) {
-	sess, err := config.LoadDefaultConfig(context.TODO())
+	sess, err := config.LoadDefaultConfig(context.Background())
 	return &sess, err
 }

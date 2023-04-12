@@ -65,7 +65,7 @@ func (urlOpts *UrlOpts) CreateS3Client() (client *s3.Client, err error) {
 }
 
 func keyExists(bucket, key string, svc *s3.Client) (bool, error) {
-	_, err := svc.HeadObject(context.TODO(), &s3.HeadObjectInput{
+	_, err := svc.HeadObject(context.Background(), &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -88,7 +88,7 @@ func getS3Object(url *url.URL) (result *s3.GetObjectOutput, err error) {
 	if err != nil {
 		return
 	}
-	result, err = svc.GetObject(context.TODO(), &s3.GetObjectInput{
+	result, err = svc.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(urlOpts.Bucket),
 		Key:    aws.String(urlOpts.Key),
 	})

@@ -42,7 +42,7 @@ func (s3File *S3File) Write(b []byte) (int, error) {
 	}
 
 	// if key exists in s3 then the key will be overwritten else the new key with input body is created
-	_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
+	_, err = svc.PutObject(context.Background(), &s3.PutObjectInput{
 		Bucket: aws.String(urlOpts.Bucket),
 		Key:    aws.String(urlOpts.Key),
 		Body:   bytes.NewReader(b),
@@ -64,7 +64,7 @@ func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
 		return nil, err
 	}
 
-	result, err := svc.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+	result, err := svc.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
 		Bucket: aws.String(urlOpts.Bucket),
 	})
 	var contents []types.Object
@@ -117,7 +117,7 @@ func (s3File *S3File) AddProperty(name, value string) error {
 		},
 	}
 	// Call the CopyObject API operation to create a copy of the object with the new metadata.
-	_, err = svc.CopyObject(context.TODO(), copyInput)
+	_, err = svc.CopyObject(context.Background(), copyInput)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (s3File *S3File) GetProperty(name string) (string, error) {
 		Key:    aws.String(urlOpts.Key),
 	}
 	// Call the HeadObject API operation to retrieve the object metadata.
-	result, err := svc.HeadObject(context.TODO(), input)
+	result, err := svc.HeadObject(context.Background(), input)
 	if err != nil {
 		return "", err
 	}
@@ -171,7 +171,7 @@ func (s3File *S3File) Delete() (err error) {
 		Key:    aws.String(urlOpts.Key),
 	}
 
-	result, err = svc.DeleteObject(context.TODO(), input)
+	result, err = svc.DeleteObject(context.Background(), input)
 	if err != nil {
 		return
 	}
