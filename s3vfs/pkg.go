@@ -27,8 +27,7 @@ func GetSession(region, bucket string) (*aws.Config, error) {
 	}
 	sessionProvider := sessionProviderMap[region+bucket]
 	if sessionProvider != nil {
-		// TODO : this needs to be fixed
-		return sessionProvider, nil
+		return sessionProvider.Get()
 	} else {
 		return nil, errors.New("no session provider available for region and bucket")
 	}
