@@ -53,13 +53,15 @@ func validateUrl(u *url.URL) error {
 	}
 }
 
-func (urlOpts *UrlOpts) CreateS3Service() (*s3.Client, error) {
-	awsSession, err := GetSession(urlOpts.Host, urlOpts.Bucket)
+func (urlOpts *UrlOpts) CreateS3Client() (client *s3.Client, err error) {
+	var awsSession *aws.Config
+
+	awsSession, err = GetSession(urlOpts.Host, urlOpts.Bucket)
 	if err != nil {
-		return nil, err
+		return
 	}
-	svc := s3.NewFromConfig(*awsSession)
-	return svc, nil
+	client = s3.NewFromConfig(*awsSession)
+	return
 }
 
 func keyExists(bucket, key string, svc *s3.Client) (bool, error) {
@@ -75,4 +77,20 @@ func keyExists(bucket, key string, svc *s3.Client) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func getS3Object(url *url.URL) (result *s3.GetObjectOutput, err error) {
+	var urlOpts *UrlOpts
+	var svc *s3.Client
+
+	urlOpts, err = parseUrl(url)
+	svc, err = urlOpts.CreateS3Client()
+	if err != nil {
+		return
+	}
+	result, err = svc.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(urlOpts.Bucket),
+		Key:    aws.String(urlOpts.Key),
+	})
+	return
 }

@@ -4,46 +4,30 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"io"
 	"log"
 	"net/url"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"go.nandlabs.io/commons/vfs"
 )
 
 type S3File struct {
 	*vfs.BaseFile
-	// TODO: remove this and use Location instead
-	//file     *s3.GetObjectOutput // this file will be the s3Object instead of the os.File
 	Location *url.URL
 	fs       vfs.VFileSystem
-	// TODO : add after each operation to closable array
-	closables []io.Closer
+	closers  []io.Closer
 }
 
 // Read - s3Object read the body
 func (s3File *S3File) Read(b []byte) (body int, err error) {
-	// GetObject from the file URL
-	var urlOpts *UrlOpts
-	var svc *s3.Client
 	var result *s3.GetObjectOutput
 
-	urlOpts, err = parseUrl(s3File.Location)
-	if err != nil {
-		return
-	}
-	svc, err = urlOpts.CreateS3Service()
-	if err != nil {
-		return
-	}
-	result, err = svc.GetObject(context.TODO(), &s3.GetObjectInput{
-		Bucket: aws.String(urlOpts.Bucket),
-		Key:    aws.String(urlOpts.Key),
-	})
-	defer result.Body.Close()
+	result, err = getS3Object(s3File.Location)
+	s3File.closers = append(s3File.closers, result.Body)
+	defer s3File.Close()
 	return result.Body.Read(b)
 }
 
@@ -52,7 +36,7 @@ func (s3File *S3File) Write(b []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	svc, err := urlOpts.CreateS3Service()
+	svc, err := urlOpts.CreateS3Client()
 	if err != nil {
 		return 0, err
 	}
@@ -75,7 +59,7 @@ func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	svc, err := urlOpts.CreateS3Service()
+	svc, err := urlOpts.CreateS3Client()
 	if err != nil {
 		return nil, err
 	}
@@ -99,17 +83,26 @@ func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
 	return response, nil
 }
 
-//func (s3File *S3File) Info() (vfs.VFileInfo, error) {
-//	// we need to return the all the metadata attached to the s3 object, how to add them as VFileInfo?
-//
-//}
+func (s3File *S3File) Info() (file vfs.VFileInfo, err error) {
+	var result *s3.GetObjectOutput
+
+	result, err = getS3Object(s3File.Location)
+	s3File.closers = append(s3File.closers, result.Body)
+	defer s3File.Close()
+	file = &s3FileInfo{
+		key:          result.Metadata["key"],
+		size:         result.ContentLength,
+		lastModified: *result.LastModified,
+	}
+	return
+}
 
 func (s3File *S3File) AddProperty(name, value string) error {
 	urlOpts, err := parseUrl(s3File.Location)
 	if err != nil {
 		return err
 	}
-	svc, err := urlOpts.CreateS3Service()
+	svc, err := urlOpts.CreateS3Client()
 	if err != nil {
 		return err
 	}
@@ -136,7 +129,7 @@ func (s3File *S3File) GetProperty(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	svc, err := urlOpts.CreateS3Service()
+	svc, err := urlOpts.CreateS3Client()
 	if err != nil {
 		return "", err
 	}
@@ -168,7 +161,7 @@ func (s3File *S3File) Delete() (err error) {
 	if err != nil {
 		return
 	}
-	svc, err = urlOpts.CreateS3Service()
+	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
 		return
 	}
@@ -187,8 +180,8 @@ func (s3File *S3File) Delete() (err error) {
 }
 
 func (s3File *S3File) Close() (err error) {
-	if len(s3File.closables) > 0 {
-		for _, closable := range s3File.closables {
+	if len(s3File.closers) > 0 {
+		for _, closable := range s3File.closers {
 			err = closable.Close()
 		}
 	}

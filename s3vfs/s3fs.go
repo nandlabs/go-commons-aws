@@ -30,7 +30,7 @@ func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 	if err != nil {
 		return
 	}
-	svc, err = urlOpts.CreateS3Service()
+	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
 		return
 	}
@@ -61,7 +61,7 @@ func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
 	if err != nil {
 		return
 	}
-	svc, err = urlOpts.CreateS3Service()
+	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
 		return
 	}
