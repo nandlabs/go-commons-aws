@@ -21,7 +21,7 @@ type S3Fs struct {
 }
 
 // Create : creating a file in the s3 bucket, can create both object and bucket
-func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
+func (s3Fs *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 	var urlOpts *UrlOpts
 	var svc *s3.Client
 	var found bool
@@ -53,7 +53,7 @@ func (o *S3Fs) Create(u *url.URL) (file vfs.VFile, err error) {
 }
 
 // Open location provided of the S3 bucket
-func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
+func (s3Fs *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
 	var urlOpts *UrlOpts
 	var svc *s3.Client
 
@@ -77,12 +77,12 @@ func (o *S3Fs) Open(u *url.URL) (file vfs.VFile, err error) {
 	if err == nil {
 		file = &S3File{
 			Location: u,
-			fs:       o,
+			fs:       s3Fs,
 		}
 	}
 	return
 }
 
-func (o *S3Fs) Schemes() []string {
+func (s3Fs *S3Fs) Schemes() []string {
 	return localFsSchemes
 }

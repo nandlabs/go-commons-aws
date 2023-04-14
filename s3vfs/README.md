@@ -52,6 +52,24 @@ go get go.nandlabs.io/commons-aws/s3vfs
     ```
 
 2. Create a bucket/file in S3
+
+   ```go
+   package main
+   
+   import "go.nandlabs.io/commons-aws/s3vfs"
+   
+   func main() {
+      // Pre-req -> you have registered your aws provider with respective configuration
+      fs := &s3vfs.S3Fs{}
+      url, _ := url2.Parse("s3://us-east-1/dummy-bucket")
+   
+      file, err := fs.Create(url)
+      if err != nil {
+         fmt.Errorf("error creating : %s", err.Error())
+      }
+      fmt.Println(file.Info())
+   }
+   ```
 3. Read a file from S3
 4. Delete a file in S3
 5. Write a file in S3

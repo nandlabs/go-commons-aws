@@ -20,16 +20,19 @@ func init() {
 	vfs.Register(s3Fs)
 }
 
-func GetSession(region, bucket string) (*aws.Config, error) {
+func GetSession(region, bucket string) (config *aws.Config, err error) {
 	if defaultSessionProvider {
 		defaultSession := &provider.DefaultSession{}
-		return defaultSession.DefaultSessionProvider()
+		config, err = defaultSession.DefaultSessionProvider()
+		return
 	}
 	sessionProvider := sessionProviderMap[region+bucket]
 	if sessionProvider != nil {
-		return sessionProvider.Get()
+		config, err = sessionProvider.Get()
+		return
 	} else {
-		return nil, errors.New("no session provider available for region and bucket")
+		err = errors.New("no session provider available for region and bucket")
+		return
 	}
 }
 

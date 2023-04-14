@@ -14,12 +14,18 @@ type SessionProvider interface {
 
 type DefaultSession struct{}
 
-func (defaultSession *DefaultSession) DefaultSessionProvider() (*aws.Config, error) {
-	sess, err := config.LoadDefaultConfig(context.Background())
-	return &sess, err
+func (defaultSession *DefaultSession) DefaultSessionProvider() (sess *aws.Config, err error) {
+	var defaultSess aws.Config
+
+	defaultSess, err = config.LoadDefaultConfig(context.Background())
+	sess = &defaultSess
+	return
 }
 
-func (defaultSession *DefaultSession) Get() (*aws.Config, error) {
-	sess, err := config.LoadDefaultConfig(context.Background())
-	return &sess, err
+func (defaultSession *DefaultSession) Get() (sess *aws.Config, err error) {
+	var getSess aws.Config
+
+	getSess, err = config.LoadDefaultConfig(context.Background())
+	sess = &getSess
+	return
 }

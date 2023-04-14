@@ -31,14 +31,19 @@ func (s3File *S3File) Read(b []byte) (body int, err error) {
 	return result.Body.Read(b)
 }
 
-func (s3File *S3File) Write(b []byte) (int, error) {
-	urlOpts, err := parseUrl(s3File.Location)
+func (s3File *S3File) Write(b []byte) (numBytes int, err error) {
+	var urlOpts *UrlOpts
+	var svc *s3.Client
+
+	urlOpts, err = parseUrl(s3File.Location)
 	if err != nil {
-		return 0, err
+		numBytes = 0
+		return
 	}
-	svc, err := urlOpts.CreateS3Client()
+	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
-		return 0, err
+		numBytes = 0
+		return
 	}
 
 	// if key exists in s3 then the key will be overwritten else the new key with input body is created
@@ -49,22 +54,28 @@ func (s3File *S3File) Write(b []byte) (int, error) {
 	})
 	if err != nil {
 		fmt.Println("Error writing file:", err)
-		return 0, err
+		numBytes = 0
+		return
 	}
-	return len(b), nil
+	numBytes = len(b)
+	return
 }
 
-func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
-	urlOpts, err := parseUrl(s3File.Location)
+func (s3File *S3File) ListAll() (files []vfs.VFile, err error) {
+	var urlOpts *UrlOpts
+	var svc *s3.Client
+	var result *s3.ListObjectsV2Output
+
+	urlOpts, err = parseUrl(s3File.Location)
 	if err != nil {
-		return nil, err
+		return
 	}
-	svc, err := urlOpts.CreateS3Client()
+	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	result, err := svc.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
+	result, err = svc.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
 		Bucket: aws.String(urlOpts.Bucket),
 	})
 	var contents []types.Object
@@ -73,14 +84,14 @@ func (s3File *S3File) ListAll() ([]vfs.VFile, error) {
 	} else {
 		contents = result.Contents
 	}
-	var response []vfs.VFile
+
 	for _, item := range contents {
 		u, _ := url.Parse(*item.Key)
-		response = append(response, &S3File{
+		files = append(files, &S3File{
 			Location: u,
 		})
 	}
-	return response, nil
+	return
 }
 
 func (s3File *S3File) Info() (file vfs.VFileInfo, err error) {
@@ -97,14 +108,17 @@ func (s3File *S3File) Info() (file vfs.VFileInfo, err error) {
 	return
 }
 
-func (s3File *S3File) AddProperty(name, value string) error {
-	urlOpts, err := parseUrl(s3File.Location)
+func (s3File *S3File) AddProperty(name, value string) (err error) {
+	var urlOpts *UrlOpts
+	var svc *s3.Client
+
+	urlOpts, err = parseUrl(s3File.Location)
 	if err != nil {
-		return err
+		return
 	}
-	svc, err := urlOpts.CreateS3Client()
+	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
-		return err
+		return
 	}
 	// Create an input object for the CopyObject API operation.
 	copyInput := &s3.CopyObjectInput{
@@ -119,19 +133,23 @@ func (s3File *S3File) AddProperty(name, value string) error {
 	// Call the CopyObject API operation to create a copy of the object with the new metadata.
 	_, err = svc.CopyObject(context.Background(), copyInput)
 	if err != nil {
-		return err
+		return
 	}
-	return nil
+	return
 }
 
-func (s3File *S3File) GetProperty(name string) (string, error) {
-	urlOpts, err := parseUrl(s3File.Location)
+func (s3File *S3File) GetProperty(name string) (value string, err error) {
+	var urlOpts *UrlOpts
+	var svc *s3.Client
+	var result *s3.HeadObjectOutput
+
+	urlOpts, err = parseUrl(s3File.Location)
 	if err != nil {
-		return "", err
+		return
 	}
-	svc, err := urlOpts.CreateS3Client()
+	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
-		return "", err
+		return
 	}
 	// Create an input object for the HeadObject API operation.
 	input := &s3.HeadObjectInput{
@@ -139,13 +157,13 @@ func (s3File *S3File) GetProperty(name string) (string, error) {
 		Key:    aws.String(urlOpts.Key),
 	}
 	// Call the HeadObject API operation to retrieve the object metadata.
-	result, err := svc.HeadObject(context.Background(), input)
+	result, err = svc.HeadObject(context.Background(), input)
 	if err != nil {
-		return "", err
+		return
 	}
-	metadataValue := result.Metadata[name]
+	value = result.Metadata[name]
 
-	return metadataValue, nil
+	return
 }
 
 func (s3File *S3File) Url() *url.URL {
