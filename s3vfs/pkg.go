@@ -2,6 +2,7 @@ package s3vfs
 
 import (
 	"errors"
+	"go.nandlabs.io/commons/textutils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"go.nandlabs.io/commons-aws/provider"
@@ -10,9 +11,8 @@ import (
 )
 
 var (
-	logger                 = l3.Get()
-	defaultSessionProvider = true
-	sessionProviderMap     = make(map[string]provider.SessionProvider)
+	logger             = l3.Get()
+	sessionProviderMap = make(map[string]provider.ConfigProvider)
 )
 
 func init() {
@@ -20,23 +20,22 @@ func init() {
 	vfs.Register(s3Fs)
 }
 
+// GetSession function will retrieve the *aws.Config object for the region & Bucket combination
 func GetSession(region, bucket string) (config *aws.Config, err error) {
-	if defaultSessionProvider {
-		defaultSession := &provider.DefaultSession{}
-		config, err = defaultSession.DefaultSessionProvider()
-		return
+	var p provider.ConfigProvider
+	var isRegistered bool
+	if p, isRegistered = sessionProviderMap[region+textutils.ColonStr+bucket]; !isRegistered {
+		p = provider.GetDefault()
 	}
-	sessionProvider := sessionProviderMap[region+bucket]
-	if sessionProvider != nil {
-		config, err = sessionProvider.Get()
-		return
+	if p != nil {
+		config, err = p.Get()
 	} else {
 		err = errors.New("no session provider available for region and bucket")
-		return
 	}
+	return
 }
 
-func AddSessionProvider(region, bucket string, provider provider.SessionProvider) {
-	defaultSessionProvider = false
-	sessionProviderMap[region+bucket] = provider
+func AddSessionProvider(region, bucket string, provider provider.ConfigProvider) {
+	sessionProviderMap[region+textutils.ColonStr+bucket] = provider
+
 }

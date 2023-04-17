@@ -7,25 +7,23 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
-type SessionProvider interface {
+type ConfigProvider interface {
 	//Get user will create the session and send it to us for the use
 	Get() (*aws.Config, error)
 }
 
-type DefaultSession struct{}
+var defaultConfigProvider = &defaultProvider{}
 
-func (defaultSession *DefaultSession) DefaultSessionProvider() (sess *aws.Config, err error) {
-	var defaultSess aws.Config
+type defaultProvider struct{}
 
-	defaultSess, err = config.LoadDefaultConfig(context.Background())
-	sess = &defaultSess
-	return
-}
-
-func (defaultSession *DefaultSession) Get() (sess *aws.Config, err error) {
+func (d *defaultProvider) Get() (sess *aws.Config, err error) {
 	var getSess aws.Config
 
 	getSess, err = config.LoadDefaultConfig(context.Background())
 	sess = &getSess
 	return
+}
+
+func GetDefault() ConfigProvider {
+	return defaultConfigProvider
 }
