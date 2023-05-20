@@ -2,11 +2,11 @@ package s3vfs
 
 import (
 	"errors"
-	"go.nandlabs.io/commons/textutils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"go.nandlabs.io/commons-aws/provider"
 	"go.nandlabs.io/commons/l3"
+	"go.nandlabs.io/commons/textutils"
 	"go.nandlabs.io/commons/vfs"
 )
 
@@ -17,7 +17,7 @@ var (
 
 func init() {
 	s3Fs := &S3Fs{}
-	vfs.Register(s3Fs)
+	vfs.GetManager().Register(s3Fs)
 }
 
 // GetSession function will retrieve the *aws.Config object for the region & Bucket combination
