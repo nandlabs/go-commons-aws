@@ -37,5 +37,4 @@ func GetSession(region, bucket string) (config *aws.Config, err error) {
 
 func AddSessionProvider(region, bucket string, provider provider.ConfigProvider) {
 	sessionProviderMap[region+textutils.ColonStr+bucket] = provider
-
 }

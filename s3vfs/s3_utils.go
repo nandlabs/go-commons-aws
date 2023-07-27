@@ -84,6 +84,9 @@ func getS3Object(url *url.URL) (result *s3.GetObjectOutput, err error) {
 	var svc *s3.Client
 
 	urlOpts, err = parseUrl(url)
+	if err != nil {
+		return
+	}
 	svc, err = urlOpts.CreateS3Client()
 	if err != nil {
 		return
