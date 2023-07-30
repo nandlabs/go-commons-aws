@@ -83,7 +83,6 @@ func main() {
 	// Create a new instance of the SQS provider
 	sqs.AddSessionProvider(pvd.region, pvd)
 
-	// Use the provider to send and receive messages
 	// ...
 }
 ```

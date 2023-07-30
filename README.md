@@ -2,10 +2,13 @@
 
 ---
 - [Modules](#modules)
+- [Contributing](#contributing)
 ---
 
 ### Modules
 1. [S3 VFS](s3vfs/README.md)
+2. [SNS](sns/README.md)
+3. [SQS](sqs/README.md)
 
 ### Contributing
 
