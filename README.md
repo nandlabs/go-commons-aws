@@ -1,3 +1,24 @@
+# Archival Notice !
+
+Dear Contributors and Users,
+
+We have decided to merge the go-commons-aws codebase with
+[golly-aws](https://github.com/nandlabs/golly-aws). As a result, this repository will be
+archived.
+
+Thank you for your contributions and support throughout the lifespan of this
+project.
+
+While active development will cease here, the project's objectives will continue
+under the new initiative.
+
+For any inquiries or further information, please refer to the new
+[project repository](https://github.com/nandlabs/golly-aws).
+
+Thank you, 
+
+Project Maintainers
+
 # aws-commons
 
 ---
